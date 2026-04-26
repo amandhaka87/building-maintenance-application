@@ -93,7 +93,7 @@ const USERS = {
 const CATEGORIES = ['Carpenter', 'Welder', 'Plumber', 'Electrician'];
 const PRIORITIES  = ['Low', 'Medium', 'High', 'Urgent'];
 
-let _nextId = 5;
+let _nextId = 6;
 function newId() { return _nextId++; }
 
 const T = (ms) => new Date(Date.now() - ms).toISOString();
@@ -304,7 +304,7 @@ function InfoRow({ label, value, full }) {
 function Toast({ message, type = 'success' }) {
   const bg = type === 'success' ? 'bg-green-600' : 'bg-blue-600';
   return (
-    <div className={`fixed bottom-6 right-6 z-50 ${bg} text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium fade-in flex items-center gap-2`}>
+    <div className={`fixed top-5 right-5 z-50 ${bg} text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium fade-in flex items-center gap-2`}>
       {type === 'success' ? '✅' : 'ℹ️'} {message}
     </div>
   );
@@ -525,9 +525,8 @@ function StaffDashboard({ user, requests, onSubmit, onLogout }) {
       {toast && <Toast message={toast} />}
 
       <main className="max-w-5xl mx-auto px-4 py-7 space-y-6">
-        <h2 className="text-xl font-bold text-slate-800">Welcome, {user.name}
-
-          <span className="text-sm font-normal text-slate-500 ml-2">· {user.dept}</span>
+        <h2 className="text-xl font-bold text-slate-800">
+          Welcome, {user.name}<span className="text-sm font-normal text-slate-500 ml-2">· {user.dept}</span>
         </h2>
 
         {/* Stats */}
@@ -948,6 +947,7 @@ function App() {
   if (currentUser.role === 'staff')     return <><StaffDashboard     {...shared} onSubmit={handleSubmit} /><InstallPrompt /></>;
   if (currentUser.role === 'principal') return <><PrincipalDashboard {...shared} onAssign={handleAssign} /><InstallPrompt /></>;
   if (currentUser.role === 'incharge')  return <><InchargeDashboard  {...shared} onUpdateStatus={handleUpdateStatus} /><InstallPrompt /></>;
+  return <LoginPage onLogin={setCurrentUser} />;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
