@@ -4,6 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Govt. Polytechnic Cheeka – Building Maintenance</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#1a3a5c" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <!-- iOS / Apple PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GP Maintenance" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -264,6 +276,53 @@ function Toast({ message, type = 'success' }) {
   return (
     <div className={`fixed bottom-6 right-6 z-50 ${bg} text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium fade-in flex items-center gap-2`}>
       {type === 'success' ? '✅' : 'ℹ️'} {message}
+    </div>
+  );
+}
+
+function InstallPrompt() {
+  const [show, setShow]         = useState(false);
+  const [isIOS, setIsIOS]       = useState(false);
+  const [prompt, setPrompt]     = useState(null);
+
+  useEffect(() => {
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) &&
+                !window.matchMedia('(display-mode: standalone)').matches;
+    if (ios) { setIsIOS(true); setShow(true); }
+
+    const handler = (e) => { e.preventDefault(); setPrompt(e); setShow(true); };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  if (!show) return null;
+
+  return (
+    <div className="fixed bottom-5 left-4 right-4 z-50 max-w-sm mx-auto fade-in">
+      <div className="bg-white rounded-2xl shadow-2xl border border-blue-100 p-4 flex items-center gap-3">
+        <img src="/icon.svg" className="w-12 h-12 rounded-xl shrink-0" alt="app icon" />
+        <div className="flex-1 min-w-0">
+          <div className="font-bold text-slate-800 text-sm">Install App</div>
+          {isIOS ? (
+            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+              Tap <strong>Share</strong> →&nbsp;<strong>Add to Home Screen</strong>
+            </p>
+          ) : (
+            <p className="text-xs text-slate-500 mt-0.5">Add to home screen for quick access</p>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {!isIOS && prompt && (
+            <button
+              onClick={() => { prompt.prompt(); setShow(false); }}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition"
+            >
+              Install
+            </button>
+          )}
+          <button onClick={() => setShow(false)} className="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -791,6 +850,12 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [requests, setRequests]       = useState(INIT_REQUESTS);
 
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  }, []);
+
   function handleSubmit({ category, priority, location, description, submittedBy }) {
     setRequests(prev => [...prev, {
       id: newId(), category, priority, location, description,
@@ -822,13 +887,13 @@ function App() {
     ));
   }
 
-  if (!currentUser) return <LoginPage onLogin={setCurrentUser} />;
+  if (!currentUser) return <><LoginPage onLogin={setCurrentUser} /><InstallPrompt /></>;
 
   const shared = { user: currentUser, requests, onLogout: () => setCurrentUser(null) };
 
-  if (currentUser.role === 'staff')     return <StaffDashboard     {...shared} onSubmit={handleSubmit} />;
-  if (currentUser.role === 'principal') return <PrincipalDashboard {...shared} onAssign={handleAssign} />;
-  if (currentUser.role === 'incharge')  return <InchargeDashboard  {...shared} onUpdateStatus={handleUpdateStatus} />;
+  if (currentUser.role === 'staff')     return <><StaffDashboard     {...shared} onSubmit={handleSubmit} /><InstallPrompt /></>;
+  if (currentUser.role === 'principal') return <><PrincipalDashboard {...shared} onAssign={handleAssign} /><InstallPrompt /></>;
+  if (currentUser.role === 'incharge')  return <><InchargeDashboard  {...shared} onUpdateStatus={handleUpdateStatus} /><InstallPrompt /></>;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);

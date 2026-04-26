@@ -1,0 +1,28 @@
+{
+  "name": "Govt. Polytechnic Cheeka - Building Maintenance",
+  "short_name": "GP Maintenance",
+  "description": "Building Maintenance Management System for Govt. Polytechnic Cheeka",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#1a3a5c",
+  "background_color": "#1a3a5c",
+  "lang": "en-IN",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "screenshots": []
+}
