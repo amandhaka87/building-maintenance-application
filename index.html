@@ -268,6 +268,14 @@ function Toast({ message, type = 'success' }) {
   );
 }
 
+function Footer() {
+  return (
+    <footer className="text-center py-4 text-xs text-slate-400 mt-4">
+      Developed by <span className="font-semibold text-slate-500">Samiksha Dandyan</span>
+    </footer>
+  );
+}
+
 /* ═══════════════════════════════════════════
    LOGIN PAGE
 ═══════════════════════════════════════════ */
@@ -347,6 +355,8 @@ function LoginPage({ onLogin }) {
           </div>
         </div>
 
+        <Footer />
+
         {/* Role cards */}
         <div className="grid grid-cols-3 gap-3 mt-5">
           {[
@@ -403,6 +413,7 @@ function StaffDashboard({ user, requests, onSubmit, onLogout }) {
 
       <main className="max-w-5xl mx-auto px-4 py-7 space-y-6">
         <h2 className="text-xl font-bold text-slate-800">Welcome, {user.name}
+
           <span className="text-sm font-normal text-slate-500 ml-2">· {user.dept}</span>
         </h2>
 
@@ -484,6 +495,7 @@ function StaffDashboard({ user, requests, onSubmit, onLogout }) {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }
@@ -600,6 +612,7 @@ function PrincipalDashboard({ user, requests, onAssign, onLogout }) {
           </div>
         </div>
       </main>
+      <Footer />
 
       {/* Assign Modal */}
       {assignTarget && (
@@ -736,6 +749,7 @@ function InchargeDashboard({ user, requests, onUpdateStatus, onLogout }) {
           </div>
         )}
       </main>
+      <Footer />
 
       {/* Completion Remarks Modal */}
       {remarksModal && (
