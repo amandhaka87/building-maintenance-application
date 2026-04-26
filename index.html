@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Govt. Polytechnic Cheeka – Building Maintenance</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .gov-gradient { background: linear-gradient(135deg, #1a3a5c 0%, #1e5799 100%); }
+    .card-lift { transition: transform 0.18s, box-shadow 0.18s; }
+    .card-lift:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+    .fade-in { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:3px; }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen">
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useMemo, useEffect } = React;
+
+/* ═══════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════ */
+const USERS = {
+  staff: [
+    { id: 's1', name: 'Ramesh Kumar',   dept: 'Civil Engineering',       role: 'staff' },
+    { id: 's2', name: 'Suresh Sharma',  dept: 'Mechanical Engineering',  role: 'staff' },
+    { id: 's3', name: 'Vijay Singh',    dept: 'Electrical Engineering',  role: 'staff' },
+    { id: 's4', name: 'Mohan Lal',      dept: 'Electronics Dept.',       role: 'staff' },
+    { id: 's5', name: 'Amit Kumar',     dept: 'Computer Science Dept.',  role: 'staff' },
+    { id: 's6', name: 'Rajesh Gupta',   dept: 'Administration Office',   role: 'staff' },
+    { id: 's7', name: 'Priya Devi',     dept: 'Library',                 role: 'staff' },
+  ],
+  principal: [
+    { id: 'p1', name: 'Dr. Principal',  title: 'Principal', role: 'principal' },
+  ],
+  incharge: [
+    { id: 'i1', name: 'Balraj',        title: 'Carpenter Incharge', category: 'Carpenter',   role: 'incharge' },
+    { id: 'i2', name: 'Deshraj',       title: 'Welder Incharge',    category: 'Welder',      role: 'incharge' },
+    { id: 'i3', name: 'Kuldeep Singh', title: 'Plumber Incharge',   category: 'Plumber',     role: 'incharge' },
+    { id: 'i4', name: 'Parbhu',        title: 'Electrician',        category: 'Electrician', role: 'incharge' },
+  ],
+};
+
+const CATEGORIES = ['Carpenter', 'Welder', 'Plumber', 'Electrician'];
+const PRIORITIES  = ['Low', 'Medium', 'High', 'Urgent'];
+
+let _nextId = 5;
+function newId() { return _nextId++; }
+
+const T = (ms) => new Date(Date.now() - ms).toISOString();
+
+const INIT_REQUESTS = [
+  {
+    id: 1, category: 'Carpenter', priority: 'High',
+    location: 'Room 101, Block A', description: 'Broken door hinge — door cannot be closed properly.',
+    submittedBy: USERS.staff[0], submittedAt: T(2*86400000),
+    status: 'Assigned',
+    assignedTo: USERS.incharge[0], assignedAt: T(86400000),
+    completionRemarks: null, completedAt: null,
+  },
+  {
+    id: 2, category: 'Electrician', priority: 'Urgent',
+    location: 'Lab 3, Block B', description: 'Electrical short circuit in main distribution panel. Power fluctuation.',
+    submittedBy: USERS.staff[2], submittedAt: T(86400000),
+    status: 'In Progress',
+    assignedTo: USERS.incharge[3], assignedAt: T(43200000),
+    completionRemarks: null, completedAt: null,
+  },
+  {
+    id: 3, category: 'Plumber', priority: 'Medium',
+    location: 'Washroom Block C, Ground Floor', description: 'Leaking overhead pipe, water dripping continuously.',
+    submittedBy: USERS.staff[1], submittedAt: T(3*86400000),
+    status: 'Pending',
+    assignedTo: null, assignedAt: null, completionRemarks: null, completedAt: null,
+  },
+  {
+    id: 4, category: 'Welder', priority: 'Low',
+    location: 'Main Entrance Gate', description: 'Gate latch broken, needs welding.',
+    submittedBy: USERS.staff[3], submittedAt: T(5*86400000),
+    status: 'Completed',
+    assignedTo: USERS.incharge[1], assignedAt: T(4*86400000),
+    completionRemarks: 'Gate latch welded and repainted. Work done successfully.',
+    completedAt: T(3*86400000),
+  },
+  {
+    id: 5, category: 'Carpenter', priority: 'Medium',
+    location: 'Staff Room, Block D', description: 'Window frame damaged, needs replacement.',
+    submittedBy: USERS.staff[5], submittedAt: T(4*86400000),
+    status: 'Pending',
+    assignedTo: null, assignedAt: null, completionRemarks: null, completedAt: null,
+  },
+];
+
+/* ═══════════════════════════════════════════
+   HELPERS / CONSTANTS
+═══════════════════════════════════════════ */
+const CAT_COLOR  = { Carpenter:'amber',  Welder:'red',    Plumber:'sky',    Electrician:'yellow' };
+const PRI_COLOR  = { Low:'green',        Medium:'blue',   High:'orange',    Urgent:'red' };
+const STA_COLOR  = { Pending:'yellow',   Assigned:'blue', 'In Progress':'purple', Completed:'green' };
+const CAT_ICON   = { Carpenter:'🪚',     Welder:'🔥',    Plumber:'🔧',     Electrician:'⚡' };
+const ROLE_LABEL = { staff:'Department Staff', principal:'Principal', incharge:'Workshop Incharge' };
+
+const BADGE_CLS = {
+  amber:  'bg-amber-100 text-amber-800 border border-amber-200',
+  red:    'bg-red-100 text-red-800 border border-red-200',
+  sky:    'bg-sky-100 text-sky-800 border border-sky-200',
+  yellow: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
+  green:  'bg-green-100 text-green-800 border border-green-200',
+  blue:   'bg-blue-100 text-blue-800 border border-blue-200',
+  orange: 'bg-orange-100 text-orange-800 border border-orange-200',
+  purple: 'bg-purple-100 text-purple-800 border border-purple-200',
+};
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
+/* ═══════════════════════════════════════════
+   SHARED COMPONENTS
+═══════════════════════════════════════════ */
+function Badge({ text, colorKey }) {
+  return (
+    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${BADGE_CLS[colorKey] || 'bg-gray-100 text-gray-700'}`}>
+      {text}
+    </span>
+  );
+}
+
+function StatCard({ label, value, icon, gradient }) {
+  return (
+    <div className={`${gradient} rounded-2xl p-5 text-white shadow-md card-lift`}>
+      <div className="text-3xl mb-2">{icon}</div>
+      <div className="text-4xl font-bold leading-none">{value}</div>
+      <div className="text-sm mt-2 opacity-90 font-medium">{label}</div>
+    </div>
+  );
+}
+
+function Navbar({ user, onLogout }) {
+  const roleBg = { staff:'bg-blue-700', principal:'bg-purple-800', incharge:'bg-emerald-700' };
+  const sub = user.dept || user.title || ROLE_LABEL[user.role];
+  return (
+    <header className={`${roleBg[user.role]} text-white shadow-lg sticky top-0 z-40`}>
+      <div className="max-w-6xl mx-auto px-5 py-3 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl">🏛️</span>
+          <div>
+            <div className="font-bold text-base leading-tight">Govt. Polytechnic Cheeka</div>
+            <div className="text-xs opacity-75">Building Maintenance Management System</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="text-right hidden sm:block">
+            <div className="font-semibold text-sm">{user.name}</div>
+            <div className="text-xs opacity-75">{sub}</div>
+          </div>
+          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center font-bold text-sm shrink-0">
+            {user.name[0]}
+          </div>
+          <button
+            onClick={onLogout}
+            className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm font-medium transition"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function Modal({ title, subtitle, onClose, children }) {
+  useEffect(() => {
+    const esc = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', esc);
+    return () => document.removeEventListener('keydown', esc);
+  }, []);
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 fade-in" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start justify-between p-6 border-b border-gray-100">
+          <div>
+            <h3 className="text-lg font-bold text-gray-800">{title}</h3>
+            {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none mt-0.5">✕</button>
+        </div>
+        <div className="p-6">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function RequestCard({ req, action }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden card-lift fade-in">
+      <div className="p-4 flex items-start gap-3">
+        <div className="text-2xl mt-0.5 shrink-0">{CAT_ICON[req.category]}</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-1.5 mb-1">
+            <span className="text-xs font-mono text-gray-400">#{req.id}</span>
+            <Badge text={req.category}  colorKey={CAT_COLOR[req.category]} />
+            <Badge text={req.priority}  colorKey={PRI_COLOR[req.priority]} />
+            <Badge text={req.status}    colorKey={STA_COLOR[req.status]} />
+          </div>
+          <div className="font-semibold text-gray-800 text-sm truncate">{req.location}</div>
+          <div className="text-xs text-gray-500 mt-0.5">
+            By {req.submittedBy.name} · {req.submittedBy.dept} · {fmtDate(req.submittedAt)}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {action}
+          <button
+            onClick={() => setOpen(!open)}
+            className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 px-2 py-1 rounded-lg text-xs transition"
+          >
+            {open ? '▲ Less' : '▼ More'}
+          </button>
+        </div>
+      </div>
+      {open && (
+        <div className="px-4 pb-4 border-t border-slate-50 pt-3 space-y-2 fade-in">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <InfoRow label="Description" value={req.description} full />
+            {req.assignedTo && <InfoRow label="Assigned To"  value={`${req.assignedTo.name} (${req.assignedTo.title})`} />}
+            {req.assignedAt && <InfoRow label="Assigned At"  value={fmtDate(req.assignedAt)} />}
+            {req.completedAt && <InfoRow label="Completed At" value={fmtDate(req.completedAt)} />}
+          </div>
+          {req.completionRemarks && (
+            <div className="bg-green-50 border border-green-100 rounded-lg p-3 text-xs">
+              <span className="font-semibold text-green-800">Completion Remarks: </span>
+              <span className="text-green-700">{req.completionRemarks}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InfoRow({ label, value, full }) {
+  return (
+    <div className={full ? 'col-span-full' : ''}>
+      <span className="font-semibold text-gray-600">{label}: </span>
+      <span className="text-gray-700">{value}</span>
+    </div>
+  );
+}
+
+function Toast({ message, type = 'success' }) {
+  const bg = type === 'success' ? 'bg-green-600' : 'bg-blue-600';
+  return (
+    <div className={`fixed bottom-6 right-6 z-50 ${bg} text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-medium fade-in flex items-center gap-2`}>
+      {type === 'success' ? '✅' : 'ℹ️'} {message}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   LOGIN PAGE
+═══════════════════════════════════════════ */
+function LoginPage({ onLogin }) {
+  const [role, setRole]     = useState('');
+  const [userId, setUserId] = useState('');
+
+  const users = useMemo(() => USERS[role] || [], [role]);
+
+  function doLogin() {
+    if (!role || !userId) return;
+    const user = users.find(u => u.id === userId);
+    if (user) onLogin(user);
+  }
+
+  return (
+    <div className="min-h-screen gov-gradient flex items-center justify-center p-4">
+      <div className="w-full max-w-md fade-in">
+        {/* Card */}
+        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
+          {/* Banner */}
+          <div className="gov-gradient text-white text-center py-10 px-6">
+            <div className="text-6xl mb-4">🏛️</div>
+            <h1 className="text-xl font-bold leading-tight">Govt. Polytechnic Cheeka</h1>
+            <div className="mt-2 inline-block bg-white/20 text-xs font-semibold px-4 py-1.5 rounded-full">
+              Building Maintenance Management System
+            </div>
+          </div>
+
+          {/* Form */}
+          <div className="p-8 space-y-5">
+            {/* Role */}
+            <div>
+              <label className="text-sm font-semibold text-gray-700 block mb-1.5">Select Your Role</label>
+              <select
+                value={role}
+                onChange={e => { setRole(e.target.value); setUserId(''); }}
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">— Choose your role —</option>
+                <option value="staff">Department Staff</option>
+                <option value="principal">Principal</option>
+                <option value="incharge">Workshop Incharge</option>
+              </select>
+            </div>
+
+            {/* User */}
+            {role && (
+              <div className="fade-in">
+                <label className="text-sm font-semibold text-gray-700 block mb-1.5">Select User</label>
+                <select
+                  value={userId}
+                  onChange={e => setUserId(e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value="">— Choose user —</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}{u.dept ? ` · ${u.dept}` : ''}{u.title ? ` — ${u.title}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <button
+              onClick={doLogin}
+              disabled={!role || !userId}
+              className="w-full gov-gradient text-white py-3.5 rounded-xl font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition text-sm tracking-wide"
+            >
+              Login to Dashboard →
+            </button>
+
+            <p className="text-center text-xs text-gray-400">
+              Demo Application · Select role and user to continue
+            </p>
+          </div>
+        </div>
+
+        {/* Role cards */}
+        <div className="grid grid-cols-3 gap-3 mt-5">
+          {[
+            { icon:'👤', label:'Department\nStaff',    desc:'Submit requests' },
+            { icon:'👨‍💼', label:'Principal',          desc:'Assign work' },
+            { icon:'🔨', label:'Workshop\nIncharge',   desc:'Update status' },
+          ].map(r => (
+            <div key={r.label} className="bg-white/15 backdrop-blur rounded-xl p-3 text-center text-white">
+              <div className="text-2xl mb-1">{r.icon}</div>
+              <div className="text-xs font-semibold whitespace-pre-line leading-tight">{r.label}</div>
+              <div className="text-xs opacity-70 mt-0.5">{r.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   STAFF DASHBOARD
+═══════════════════════════════════════════ */
+function StaffDashboard({ user, requests, onSubmit, onLogout }) {
+  const [showForm, setShowForm] = useState(false);
+  const [toast, setToast]       = useState(null);
+  const [form, setForm]         = useState({ category:'', priority:'', location:'', description:'' });
+
+  const mine    = requests.filter(r => r.submittedBy.id === user.id);
+  const pending = mine.filter(r => r.status === 'Pending').length;
+  const active  = mine.filter(r => r.status === 'Assigned' || r.status === 'In Progress').length;
+  const done    = mine.filter(r => r.status === 'Completed').length;
+
+  function showToast(msg) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3500);
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    const { category, priority, location, description } = form;
+    if (!category || !priority || !location.trim() || !description.trim()) return;
+    onSubmit({ category, priority, location: location.trim(), description: description.trim(), submittedBy: user });
+    setForm({ category:'', priority:'', location:'', description:'' });
+    setShowForm(false);
+    showToast('Request submitted! Forwarded to Principal automatically.');
+  }
+
+  function setF(key, val) { setForm(prev => ({ ...prev, [key]: val })); }
+
+  return (
+    <div className="min-h-screen bg-slate-100">
+      <Navbar user={user} onLogout={onLogout} />
+      {toast && <Toast message={toast} />}
+
+      <main className="max-w-5xl mx-auto px-4 py-7 space-y-6">
+        <h2 className="text-xl font-bold text-slate-800">Welcome, {user.name}
+          <span className="text-sm font-normal text-slate-500 ml-2">· {user.dept}</span>
+        </h2>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <StatCard label="Total Requests"  value={mine.length} icon="📋" gradient="bg-gradient-to-br from-blue-500 to-blue-700" />
+          <StatCard label="Pending"         value={pending}     icon="⏳" gradient="bg-gradient-to-br from-amber-500 to-amber-600" />
+          <StatCard label="In Progress"     value={active}      icon="🔨" gradient="bg-gradient-to-br from-violet-500 to-violet-700" />
+          <StatCard label="Completed"       value={done}        icon="✅" gradient="bg-gradient-to-br from-emerald-500 to-emerald-700" />
+        </div>
+
+        {/* Requests panel */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <h3 className="font-bold text-slate-800 text-base">My Work Requests</h3>
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${showForm ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+            >
+              {showForm ? '✕ Cancel' : '＋ New Request'}
+            </button>
+          </div>
+
+          {/* New request form */}
+          {showForm && (
+            <form onSubmit={handleSubmit} className="p-6 border-b border-slate-100 bg-blue-50 fade-in">
+              <h4 className="font-bold text-blue-900 mb-4 flex items-center gap-2">📝 Submit New Work Request</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 block mb-1">Work Category *</label>
+                  <select value={form.category} onChange={e => setF('category', e.target.value)} required
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
+                    <option value="">Select category…</option>
+                    {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 block mb-1">Priority *</label>
+                  <select value={form.priority} onChange={e => setF('priority', e.target.value)} required
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
+                    <option value="">Select priority…</option>
+                    {PRIORITIES.map(p => <option key={p}>{p}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="mb-4">
+                <label className="text-xs font-semibold text-slate-600 block mb-1">Location *</label>
+                <input value={form.location} onChange={e => setF('location', e.target.value)} required
+                  placeholder="e.g. Room 105, Block A" maxLength={100}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              </div>
+              <div className="mb-5">
+                <label className="text-xs font-semibold text-slate-600 block mb-1">Description *</label>
+                <textarea value={form.description} onChange={e => setF('description', e.target.value)} required
+                  rows={3} placeholder="Describe the maintenance work needed…" maxLength={400}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none" />
+              </div>
+              <div className="flex items-center gap-3">
+                <button type="submit"
+                  className="gov-gradient text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:opacity-90 transition">
+                  Submit Request
+                </button>
+                <span className="text-xs text-slate-500">Request will be automatically forwarded to the Principal.</span>
+              </div>
+            </form>
+          )}
+
+          {/* List */}
+          <div className="p-6 space-y-3">
+            {mine.length === 0 ? (
+              <div className="text-center py-16 text-slate-400">
+                <div className="text-5xl mb-3">📭</div>
+                <div className="font-medium">No requests yet</div>
+                <div className="text-sm mt-1">Click "New Request" to submit your first maintenance request.</div>
+              </div>
+            ) : (
+              [...mine].reverse().map(r => <RequestCard key={r.id} req={r} />)
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   PRINCIPAL DASHBOARD
+═══════════════════════════════════════════ */
+function PrincipalDashboard({ user, requests, onAssign, onLogout }) {
+  const [tab, setTab]                 = useState('all');
+  const [assignTarget, setAssignTarget] = useState(null);
+  const [selectedIncharge, setSel]    = useState('');
+  const [toast, setToast]             = useState(null);
+
+  function showToast(msg) { setToast(msg); setTimeout(() => setToast(null), 3500); }
+
+  const stats = useMemo(() => ({
+    total:   requests.length,
+    pending: requests.filter(r => r.status === 'Pending').length,
+    assigned:requests.filter(r => r.status === 'Assigned').length,
+    inprog:  requests.filter(r => r.status === 'In Progress').length,
+    done:    requests.filter(r => r.status === 'Completed').length,
+  }), [requests]);
+
+  const filtered = useMemo(() => {
+    const map = {
+      all:      requests,
+      pending:  requests.filter(r => r.status === 'Pending'),
+      active:   requests.filter(r => r.status === 'Assigned' || r.status === 'In Progress'),
+      done:     requests.filter(r => r.status === 'Completed'),
+    };
+    return [...(map[tab] || requests)].reverse();
+  }, [requests, tab]);
+
+  const compatible = useMemo(() =>
+    assignTarget ? USERS.incharge.filter(i => i.category === assignTarget.category) : [],
+  [assignTarget]);
+
+  function doAssign() {
+    if (!selectedIncharge || !assignTarget) return;
+    const incharge = USERS.incharge.find(i => i.id === selectedIncharge);
+    onAssign(assignTarget.id, incharge);
+    setAssignTarget(null); setSel('');
+    showToast(`Request #${assignTarget.id} assigned to ${incharge.name}.`);
+  }
+
+  const TABS = [['all','All Requests'], ['pending','⏳ Pending'], ['active','🔨 Active'], ['done','✅ Done']];
+
+  return (
+    <div className="min-h-screen bg-slate-100">
+      <Navbar user={user} onLogout={onLogout} />
+      {toast && <Toast message={toast} />}
+
+      <main className="max-w-6xl mx-auto px-4 py-7 space-y-6">
+        <h2 className="text-xl font-bold text-slate-800">Principal Dashboard</h2>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+          <StatCard label="Total"      value={stats.total}    icon="📋" gradient="bg-gradient-to-br from-slate-600 to-slate-800" />
+          <StatCard label="Pending"    value={stats.pending}  icon="⏳" gradient="bg-gradient-to-br from-amber-500 to-amber-600" />
+          <StatCard label="Assigned"   value={stats.assigned} icon="📌" gradient="bg-gradient-to-br from-blue-500 to-blue-700" />
+          <StatCard label="In Progress"value={stats.inprog}   icon="🔨" gradient="bg-gradient-to-br from-violet-500 to-violet-700" />
+          <StatCard label="Completed"  value={stats.done}     icon="✅" gradient="bg-gradient-to-br from-emerald-500 to-emerald-700" />
+        </div>
+
+        {/* Workshop Incharges quick view */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {USERS.incharge.map(inc => {
+            const assigned = requests.filter(r => r.assignedTo?.id === inc.id && r.status !== 'Completed').length;
+            return (
+              <div key={inc.id} className="bg-white rounded-xl p-4 border border-slate-100 flex items-center gap-3 card-lift">
+                <span className="text-2xl">{CAT_ICON[inc.category]}</span>
+                <div>
+                  <div className="font-semibold text-slate-800 text-sm">{inc.name}</div>
+                  <div className="text-xs text-slate-500">{inc.title}</div>
+                  <div className="text-xs text-blue-600 font-medium mt-0.5">{assigned} active task{assigned !== 1 ? 's' : ''}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Requests panel */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
+          <div className="px-6 pt-5 pb-3 border-b border-slate-100">
+            <h3 className="font-bold text-slate-800 mb-3">Work Requests</h3>
+            <div className="flex flex-wrap gap-2">
+              {TABS.map(([key, label]) => (
+                <button key={key} onClick={() => setTab(key)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-semibold transition ${tab === key ? 'bg-purple-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-6 space-y-3">
+            {filtered.length === 0 ? (
+              <div className="text-center py-16 text-slate-400">
+                <div className="text-5xl mb-3">📭</div>
+                <div className="font-medium">No requests in this category</div>
+              </div>
+            ) : filtered.map(r => (
+              <RequestCard key={r.id} req={r}
+                action={r.status === 'Pending' ? (
+                  <button
+                    onClick={() => { setAssignTarget(r); setSel(''); }}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap"
+                  >
+                    📌 Assign
+                  </button>
+                ) : null}
+              />
+            ))}
+          </div>
+        </div>
+      </main>
+
+      {/* Assign Modal */}
+      {assignTarget && (
+        <Modal
+          title="Assign Work Request"
+          subtitle={`#${assignTarget.id} · ${assignTarget.category} · ${assignTarget.location}`}
+          onClose={() => setAssignTarget(null)}
+        >
+          <p className="text-xs text-slate-500 mb-4">
+            Only {assignTarget.category} incharges are shown for this request.
+          </p>
+          <div className="space-y-2 mb-6">
+            {compatible.map(inc => (
+              <label key={inc.id}
+                className={`flex items-center gap-3 p-3.5 rounded-xl cursor-pointer border-2 transition ${selectedIncharge === inc.id ? 'border-purple-500 bg-purple-50' : 'border-slate-100 hover:border-slate-200 bg-slate-50'}`}
+              >
+                <input type="radio" name="inc" value={inc.id} checked={selectedIncharge === inc.id}
+                  onChange={() => setSel(inc.id)} className="accent-purple-600" />
+                <div className="text-xl">{CAT_ICON[inc.category]}</div>
+                <div>
+                  <div className="font-bold text-slate-800">{inc.name}</div>
+                  <div className="text-xs text-slate-500">{inc.title}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => setAssignTarget(null)}
+              className="flex-1 border border-slate-300 text-slate-700 py-2.5 rounded-xl font-semibold hover:bg-slate-50 transition text-sm">
+              Cancel
+            </button>
+            <button onClick={doAssign} disabled={!selectedIncharge}
+              className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white py-2.5 rounded-xl font-bold transition text-sm">
+              ✅ Assign Work
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   INCHARGE DASHBOARD
+═══════════════════════════════════════════ */
+function InchargeDashboard({ user, requests, onUpdateStatus, onLogout }) {
+  const [remarksModal, setRemarksModal] = useState(null);
+  const [remarks, setRemarks]           = useState('');
+  const [toast, setToast]               = useState(null);
+
+  function showToast(msg) { setToast(msg); setTimeout(() => setToast(null), 3500); }
+
+  const mine    = requests.filter(r => r.assignedTo?.id === user.id);
+  const active  = mine.filter(r => r.status !== 'Completed');
+  const done    = mine.filter(r => r.status === 'Completed');
+
+  function handleAction(req) {
+    if (req.status === 'Assigned') {
+      onUpdateStatus(req.id, 'In Progress', null);
+      showToast(`Task #${req.id} marked as In Progress.`);
+    } else if (req.status === 'In Progress') {
+      setRemarksModal(req); setRemarks('');
+    }
+  }
+
+  function confirmComplete() {
+    if (!remarksModal) return;
+    onUpdateStatus(remarksModal.id, 'Completed', remarks.trim() || 'Work completed.');
+    showToast(`Task #${remarksModal.id} marked as Completed. ✅`);
+    setRemarksModal(null); setRemarks('');
+  }
+
+  const actionLabel = { 'Assigned': '▶ Start Work', 'In Progress': '✅ Mark Complete' };
+  const actionColor = {
+    'Assigned':   'bg-indigo-600 hover:bg-indigo-700',
+    'In Progress':'bg-emerald-600 hover:bg-emerald-700',
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-100">
+      <Navbar user={user} onLogout={onLogout} />
+      {toast && <Toast message={toast} />}
+
+      <main className="max-w-5xl mx-auto px-4 py-7 space-y-6">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl">{CAT_ICON[user.category]}</span>
+          <div>
+            <h2 className="text-xl font-bold text-slate-800">{user.name}</h2>
+            <p className="text-sm text-slate-500">{user.title}</p>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4">
+          <StatCard label="Total Assigned" value={mine.length}   icon="📋" gradient="bg-gradient-to-br from-blue-500 to-blue-700" />
+          <StatCard label="Active Tasks"   value={active.length} icon="⚙️" gradient="bg-gradient-to-br from-orange-500 to-orange-600" />
+          <StatCard label="Completed"      value={done.length}   icon="✅" gradient="bg-gradient-to-br from-emerald-500 to-emerald-700" />
+        </div>
+
+        {/* Active Tasks */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
+          <div className="px-6 py-4 border-b border-slate-100">
+            <h3 className="font-bold text-slate-800">Active Tasks</h3>
+          </div>
+          <div className="p-6 space-y-3">
+            {active.length === 0 ? (
+              <div className="text-center py-16 text-slate-400">
+                <div className="text-5xl mb-3">🎉</div>
+                <div className="font-medium">No active tasks</div>
+                <div className="text-sm mt-1">All caught up! Check back later.</div>
+              </div>
+            ) : active.map(r => (
+              <RequestCard key={r.id} req={r}
+                action={actionLabel[r.status] && (
+                  <button onClick={() => handleAction(r)}
+                    className={`${actionColor[r.status]} text-white px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap`}>
+                    {actionLabel[r.status]}
+                  </button>
+                )}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Completed */}
+        {done.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
+            <div className="px-6 py-4 border-b border-slate-100">
+              <h3 className="font-bold text-slate-800">Completed Tasks</h3>
+            </div>
+            <div className="p-6 space-y-3">
+              {[...done].reverse().map(r => <RequestCard key={r.id} req={r} />)}
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Completion Remarks Modal */}
+      {remarksModal && (
+        <Modal
+          title="Mark Task as Completed"
+          subtitle={`#${remarksModal.id} · ${remarksModal.location}`}
+          onClose={() => setRemarksModal(null)}
+        >
+          <div className="mb-5">
+            <label className="text-sm font-semibold text-slate-700 block mb-2">Completion Remarks</label>
+            <textarea
+              value={remarks}
+              onChange={e => setRemarks(e.target.value)}
+              rows={4}
+              placeholder="Describe the work done, materials used, etc."
+              className="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
+            />
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => setRemarksModal(null)}
+              className="flex-1 border border-slate-300 text-slate-700 py-2.5 rounded-xl font-semibold hover:bg-slate-50 transition text-sm">
+              Cancel
+            </button>
+            <button onClick={confirmComplete}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-bold transition text-sm">
+              ✅ Confirm Complete
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   ROOT APP
+═══════════════════════════════════════════ */
+function App() {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [requests, setRequests]       = useState(INIT_REQUESTS);
+
+  function handleSubmit({ category, priority, location, description, submittedBy }) {
+    setRequests(prev => [...prev, {
+      id: newId(), category, priority, location, description,
+      submittedBy,
+      submittedAt: new Date().toISOString(),
+      status: 'Pending',
+      assignedTo: null, assignedAt: null, completionRemarks: null, completedAt: null,
+    }]);
+  }
+
+  function handleAssign(requestId, incharge) {
+    setRequests(prev => prev.map(r =>
+      r.id === requestId
+        ? { ...r, status: 'Assigned', assignedTo: incharge, assignedAt: new Date().toISOString() }
+        : r
+    ));
+  }
+
+  function handleUpdateStatus(requestId, status, remarks) {
+    setRequests(prev => prev.map(r =>
+      r.id === requestId
+        ? {
+            ...r,
+            status,
+            completionRemarks: remarks ?? r.completionRemarks,
+            completedAt: status === 'Completed' ? new Date().toISOString() : r.completedAt,
+          }
+        : r
+    ));
+  }
+
+  if (!currentUser) return <LoginPage onLogin={setCurrentUser} />;
+
+  const shared = { user: currentUser, requests, onLogout: () => setCurrentUser(null) };
+
+  if (currentUser.role === 'staff')     return <StaffDashboard     {...shared} onSubmit={handleSubmit} />;
+  if (currentUser.role === 'principal') return <PrincipalDashboard {...shared} onAssign={handleAssign} />;
+  if (currentUser.role === 'incharge')  return <InchargeDashboard  {...shared} onUpdateStatus={handleUpdateStatus} />;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
